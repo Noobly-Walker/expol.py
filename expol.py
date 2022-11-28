@@ -1,5 +1,6 @@
 from math import log, ceil, floor
-# Written by Noobly Walker. Expol.PY is free to use.
+# Written and maintained by Noobly Walker.
+# Liscensed with GNU General Public Liscense v3.
 
 MANTISSA = 0
 EXPONENT = 1
