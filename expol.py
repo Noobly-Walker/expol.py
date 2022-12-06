@@ -38,6 +38,7 @@ sk  - Scientific K              123.000×1000^15226
 skl - Scientific K Log-looped   123.000×1000^1000^1.394
 i   - Illions                   123.000 QuinVigintDucent-QuinDecMillillion
 is  - Illions Shorthand         123.000 QiVgDt-QiDcMl
+r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
 
 .   - Round to Nth decimal place
 ,   - Insert thousands separators
@@ -347,6 +348,41 @@ is  - Illions Shorthand         123.000 QiVgDt-QiDcMl
         def checkIndex(indexedList, index):
             try: return indexedList[index]
             except IndexError: return 0
+
+        def romanize(mant, exp, notationstr, fractions):
+            string = ""
+            if mant < 0:
+                mant = abs(mant)
+                string += notationstr[-1]
+            mant *= 10**(exp % 3)
+            exp //= 3
+            remainder = round(mant % 1 * 12)
+            mant = int(mant // 1)
+            if remainder >= 12:
+                mant += 1
+                remainder -= 12
+            if mant >= 1000:
+                mant /= 1000
+                remainder = round(mant % 1 * 12)
+                mant = int(mant // 1)
+                exp += 1
+            mant = str("".join(reversed(str(mant))))
+            power = len(mant)-1
+            while power >= 0:
+                notmap = {"0":"",
+                          "1":notationstr[power*2],
+                          "2":notationstr[power*2]*2,
+                          "3":notationstr[power*2]*3,
+                          "4":notationstr[power*2]+notationstr[power*2+1],
+                          "5":notationstr[power*2+1],
+                          "6":notationstr[power*2+1]+notationstr[power*2],
+                          "7":notationstr[power*2+1]+notationstr[power*2]*2,
+                          "8":notationstr[power*2]*2+notationstr[power*2+2],
+                          "9":notationstr[power*2]+notationstr[power*2+2]}
+                string += notmap[mant[power]]
+                power -= 1
+            string += fractions[remainder]
+            return string, exp
         
         if "." in fmt: #rounding
             fmtChunks = fmt.split(".")
@@ -413,8 +449,28 @@ is  - Illions Shorthand         123.000 QiVgDt-QiDcMl
         elif "k" in fmt: #engineering k
             mant *= 10**(exp % 3)
             exp //= 3
-            if "," in fmt: string = f" = {round(mant,MANTISSA_ROUND)}k{exp:,}"
+            if "," in fmt: string = f"{round(mant,MANTISSA_ROUND)}k{exp:,}"
             else: string = f"{round(mant,MANTISSA_ROUND)}k{exp}"
+
+        elif "r" in fmt: #roman
+            notationstr = "IVXLCDM-"
+            notationexpstr = "ᶦᵛˣᴸᶜᴰᴹ⁻"
+            fractions = ["","·",":","∴","∷","⁙","S","S·","S:","S∴","S∷","S⁙"]
+            fractionsexp = ["","⚀","⚁","⚂","⚃","⚄","ˢ","ˢ⚀","ˢ⚁","ˢ⚂","ˢ⚃","ˢ⚄"]
+            if mant == 0:
+                string = "N"
+            else:
+                stringadd, exp = romanize(mant, exp, notationstr, fractions)
+                string += stringadd
+                if exp < 1000:
+                    stringadd, exp2 = romanize(exp, 0, notationexpstr, fractionsexp)
+                    string += "ᴹ"*exp2 + stringadd
+                else:
+                    exp2 = log(exp, 1000)
+                    stringadd, exp3 = romanize(1000**(exp2%1), 0, notationexpstr, fractionsexp)
+                    string += stringadd + "^"
+                    stringadd, _ = romanize(exp2//1+exp3, 0, notationexpstr, fractionsexp)
+                    string += stringadd
 
         if "%" in fmt: #percent sign
             string += "%"
