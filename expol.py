@@ -5,6 +5,7 @@ from decimal import Decimal
 
 MANTISSA = 0
 EXPONENT = 1
+EMAX = 1000000
 
 class MemoryOverflowSafeguard(Exception):
     def __init__(self, length, message="this operation would require a dangerous amount of memory. This action has been cancelled."):
@@ -166,6 +167,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
     def __pow__(self, exponent): #Exponentiation operation **
         var1 = self.value; var2 = expol(exponent).value
         a, b, c, d = var1[0], var1[1], var2[0], var2[1]
+        if d > EMAX: raise MemoryOverflowSafeguard(d)
         n = int(((b+Decimal(log(a, 10)))*10**d*c)*10**30)
         if n >= 0: expOut = abs(n) // 10**30
         else: expOut = abs(n) // 10**30 * -1
@@ -192,7 +194,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         tetraponent = expol(tetraponent)
         out = expol(self)
         while tetraponent > 1:
-            if out.exponent > 1000000: raise MemoryOverflowSafeguard(out.exponent)
+            if out.exponent > EMAX: raise MemoryOverflowSafeguard(out.exponent)
             out = self**out
             tetraponent -= 1
         return out
@@ -498,7 +500,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         return str(self.value)
 
     def __int__(self): #Conversion to integer
-        if self.value[EXPONENT] > 1000000: raise MemoryOverflowSafeguard(self.value[EXPONENT])
+        if self.value[EXPONENT] > EMAX: raise MemoryOverflowSafeguard(self.value[EXPONENT])
         elif self.value[EXPONENT] > 100: #must carefully step down to int to prevent float overflow
             x = int(self.value[MANTISSA]*10**100)
             expon = self.value[EXPONENT]-100
