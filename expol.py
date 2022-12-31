@@ -1,4 +1,5 @@
 from math import log, ceil, floor
+from decimal import Decimal
 # Written and maintained by Noobly Walker.
 # Liscensed with GNU General Public Liscense v3.
 
@@ -59,25 +60,25 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
                     #Case 2: Stringified list
                     if type(evaldStr) == list:
                         if len(evaldStr) == 2:
-                            if type(evaldStr[0]) in [float, int] and type(evaldStr[1]) == int: self.value = evaldStr
+                            if type(evaldStr[0]) in [float, Decimal, int] and type(evaldStr[1]) == int: self.value = [Decimal(evaldStr[0]), evaldStr[1]]
                             else: #going to find out which one was the wrong type
-                                if type(evaldStr[0]) not in [float, int]: raise TypeError(f"index 0: expected int or float, but got {type(evaldStr[0])}")
+                                if type(evaldStr[0]) not in [float, int, Decimal]: raise TypeError(f"index 0: expected int, float, or decimal, but got {type(evaldStr[0])}")
                                 if type(evaldStr[1]) not in [int]: raise TypeError(f"index 1: expected int, but got {type(evaldStr[0])}")
                         else: raise IndexError(f"expol list takes 2 positional variables but {len(evaldStr)} were given")
-                    #Cases 3 and 4: Stringified float or int
-                    elif type(evaldStr) in [float, int]: self.value = self.expExtract(evaldStr)
+                    #Cases 3, 4, and 5: Stringified float, int, or decimal
+                    elif type(evaldStr) in [float, int, Decimal]: self.value = self.expExtract(evaldStr)
                     else: raise ValueError(f"invalid literal for expol() with value '{obj}'")
-            #Case 5: List
+            #Case 6: List
             elif type(obj) == list:
                 if len(obj) == 2:
-                    if type(obj[0]) in [float, int] and type(obj[1]) == int: self.value = obj
+                    if type(obj[0]) in [float, int, Decimal] and type(obj[1]) == int: self.value = [Decimal(obj[0]), obj[1]]
                     else: #going to find out which one was the wrong type
-                        if type(obj[0]) not in [float, int]: raise TypeError(f"index 0: expected int or float, but got {type(obj[0])}")
+                        if type(obj[0]) not in [float, int, Decimal]: raise TypeError(f"index 0: expected int, float, or decimal, but got {type(obj[0])}")
                         if type(obj[1]) not in [int]: raise TypeError(f"index 1: expected int, but got {type(obj[0])}")
                 else: raise IndexError(f"expol list takes 2 positional variables but {len(obj)} were given")
-            #Cases 6 and 7: Float or int
-            elif type(obj) in [float, int]: self.value = self.expExtract(obj)
-            #Case 8: Expol
+            #Cases 7, 8 and 9: Float, int, or decimal
+            elif type(obj) in [float, int, Decimal]: self.value = self.expExtract(obj)
+            #Case 10: Expol
             elif type(obj) == expol: self.value = obj.value
             else: raise TypeError(f"expected int, float, list, or str, but got {type(obj[0])}")
 
@@ -89,19 +90,22 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
     def exponent(self):
         return self.value[EXPONENT]
             
-    def expExtract(self, variable): #Converts integers and double floating point numbers into exponent lists
-        if type(variable) in [int, float]:
+    def expExtract(self, variable): #Converts integers, double floating point numbers, and decimal floating point numbers into exponent lists
+        if type(variable) in [int, float, Decimal]:
             if variable != 0:
                 exponent = int(log(abs(variable),10))
-                mantissa = variable / 10**exponent
+                mantissa = Decimal(variable) / 10**exponent
                 return self.expFixVar([mantissa, exponent])
             else: return [0,0]
         elif type(variable) == expol:
-            return variable.value
+            if type(variable.mantissa) is float: return self.expFixVar([variable.mantissa, variable.exponent])
+            else: return variable.value
         elif type(variable) == list:
             return variable
 
     def expFixVar(self, variable): #Corrals the mantissa between 1 and 10 and updates the exponent accordingly
+        if type(variable[MANTISSA]) is float:
+            variable = [Decimal(variable[MANTISSA]), variable[EXPONENT]]
         if variable[MANTISSA] != 0:
             while abs(variable[MANTISSA]) >= 10:
                 variable[MANTISSA] /= 10
@@ -157,7 +161,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
     def __pow__(self, exponent): #Exponentiation operation **
         var1 = self.value; var2 = expol(exponent).value
         a, b, c, d = var1[0], var1[1], var2[0], var2[1]
-        n = int(((b+log(a, 10))*10**d*c)*10**30)
+        n = int(((b+Decimal(log(a, 10)))*10**d*c)*10**30)
         if n >= 0: expOut = abs(n) // 10**30
         else: expOut = abs(n) // 10**30 * -1
         mantOut = round(10**(n % 10**30 / 10**30),10)
@@ -175,9 +179,9 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         else:
             return expol(log(mant, 10)+exp)
 
-    def log(self, base:float): #Custom log operation
+    def log(self, base:Decimal): #Custom log operation
         mant,exp = self.value
-        return expol(log(mant, base)+exp/log(base, 10))
+        return expol(Decimal(log(mant, base))+Decimal(exp)/Decimal(log(base, 10)))
 
     def __neg__(self): #Negate operation -expol
         return expol([self.value[MANTISSA]*-1,self.value[EXPONENT]])
@@ -270,7 +274,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             [
                 ["","Mill","Micr","Nan","Pic","Femt","Att","Zept","Yoct","Xon"],
                 ["","Me","Due","Trio","Tetre","Pente","Hexe","Hepte","Octe","Enne"],
-                ["","c","Icos","Triacont","Tetracont","Pentacont","Hexacont","Heptacont","Octacont","Ennacont"],
+                ["","Vec","Icos","Triacont","Tetracont","Pentacont","Hexacont","Heptacont","Octacont","Ennacont"],
                 ["","Hect","Duehect","Triahect","Tetrahect","Pentahect","Hexahect","Heptahect","Octahect","Ennahect"]
             ],
             [
@@ -307,7 +311,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             
             while exponentAtWorkingTier >= 1000: #figure out which tier -illion to use with repeated log1000()
                 exponentAtLastTier = exponentAtWorkingTier #save the last tier's exponent, in case it's needed
-                exponentAtWorkingTier = int(log(exponentAtWorkingTier, 1000))
+                exponentAtWorkingTier = int(expol(exponentAtWorkingTier).log(1000))
                 workingTier += 1 #workingTier is googological tier, with 0 starting million, 1 starting millillion, 2 starting killillion, etc.
                 
             if exponentAtWorkingTier == -1 and not isFraction: # it's between zero and one thousand!
@@ -318,13 +322,13 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
                 sections = []
                 for workingTierValue in range(exponentAtWorkingTier, -1, -1): # workingTierValue is the number of this tier. 7 in tier 2 is zetillion.
                     if workingTierValue == exponentAtWorkingTier:
-                        if exponentGroupsAtLastTier[-(workingTierValue+1)] == 1: # if theres only one, then theres no need to bother with numbers before. It's millillion, not memillillion.
+                        if exponentGroupsAtLastTier[-(workingTierValue)+1] == 1: # if theres only one, then theres no need to bother with numbers before. It's millillion, not memillillion.
                             sections.insert(0, parseNotationList(_list, workingTier, workingTierValue))
                         else: #if there is more than one, then we do need to specify the quantity of that place.
-                            sections.insert(0, parseNotationList(_list, workingTier-1, exponentGroupsAtLastTier[-(workingTierValue+1)], False) +
+                            sections.insert(0, parseNotationList(_list, workingTier-1, exponentGroupsAtLastTier[-(workingTierValue)+1], False) +
                                             parseNotationList(_list, workingTier, workingTierValue))
-                    elif exponentGroupsAtLastTier[-(workingTierValue+1)] != 0:
-                        sections.insert(0, parseNotationList(_list, workingTier-1, exponentGroupsAtLastTier[-(workingTierValue+1)], False) +
+                    elif exponentGroupsAtLastTier[-(workingTierValue)] != 0:
+                        sections.insert(0, parseNotationList(_list, workingTier-1, exponentGroupsAtLastTier[-(workingTierValue)+1], False) +
                                         parseNotationList(_list, workingTier, workingTierValue))
                     if sections[0] == "": sections.pop(0)
                 if len(sections) > 1: name = "-".join(sections)
