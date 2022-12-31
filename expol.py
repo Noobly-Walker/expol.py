@@ -18,6 +18,7 @@ class MemoryOverflowSafeguard(Exception):
         else: self.message = message
 
         super().__init__(self.message)
+    
 
 class expol:
     def __init__(self, obj=None):
@@ -51,9 +52,13 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
                 values = obj.split('e')
                 if len(values) == 2:
                     if values[0] == '': values[0] = 1 #e0 = 1
-                    else: raise TypeError(f"Invalid string value '{values[0]}' passed in.")
+                    else:
+                        try: values[0] = Decimal(values[0])
+                        except Exception: raise TypeError(f"Invalid string value '{values[0]}' passed in.")
                     if values[1] == '': values[1] = 0 #8e = 8
-                    else: raise TypeError(f"Invalid string value '{values[1]}' passed in.")
+                    else:
+                        try: values[1] = int(values[1])
+                        except Exception: raise TypeError(f"Invalid string value '{values[1]}' passed in.")
                     self.value = [values[0], values[1]]
                 else:
                     evaldStr = eval(obj)
@@ -62,25 +67,25 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
                         if len(evaldStr) == 2:
                             if type(evaldStr[0]) in [float, Decimal, int] and type(evaldStr[1]) == int: self.value = [Decimal(evaldStr[0]), evaldStr[1]]
                             else: #going to find out which one was the wrong type
-                                if type(evaldStr[0]) not in [float, int, Decimal]: raise TypeError(f"index 0: expected int, float, or decimal, but got {type(evaldStr[0])}")
-                                if type(evaldStr[1]) not in [int]: raise TypeError(f"index 1: expected int, but got {type(evaldStr[0])}")
-                        else: raise IndexError(f"expol list takes 2 positional variables but {len(evaldStr)} were given")
+                                if type(evaldStr[0]) not in [float, int, Decimal]: raise TypeError(f"Index 0: expected int, float, or decimal, but got {type(evaldStr[0])}")
+                                if type(evaldStr[1]) not in [int]: raise TypeError(f"Index 1: expected int, but got {type(evaldStr[0])}")
+                        else: raise IndexError(f"Expol list takes 2 positional variables but {len(evaldStr)} were given")
                     #Cases 3, 4, and 5: Stringified float, int, or decimal
                     elif type(evaldStr) in [float, int, Decimal]: self.value = self.expExtract(evaldStr)
-                    else: raise ValueError(f"invalid literal for expol() with value '{obj}'")
+                    else: raise ValueError(f"Invalid literal for expol() with value '{obj}'")
             #Case 6: List
             elif type(obj) == list:
                 if len(obj) == 2:
                     if type(obj[0]) in [float, int, Decimal] and type(obj[1]) == int: self.value = [Decimal(obj[0]), obj[1]]
                     else: #going to find out which one was the wrong type
-                        if type(obj[0]) not in [float, int, Decimal]: raise TypeError(f"index 0: expected int, float, or decimal, but got {type(obj[0])}")
-                        if type(obj[1]) not in [int]: raise TypeError(f"index 1: expected int, but got {type(obj[0])}")
-                else: raise IndexError(f"expol list takes 2 positional variables but {len(obj)} were given")
+                        if type(obj[0]) not in [float, int, Decimal]: raise TypeError(f"Index 0: expected int, float, or decimal, but got {type(obj[0])}")
+                        if type(obj[1]) not in [int]: raise TypeError(f"Index 1: expected int, but got {type(obj[0])}")
+                else: raise IndexError(f"Expol list takes 2 positional variables but {len(obj)} were given")
             #Cases 7, 8 and 9: Float, int, or decimal
             elif type(obj) in [float, int, Decimal]: self.value = self.expExtract(obj)
             #Case 10: Expol
             elif type(obj) == expol: self.value = obj.value
-            else: raise TypeError(f"expected int, float, list, or str, but got {type(obj[0])}")
+            else: raise TypeError(f"Expected int, float, list, or str, but got {type(obj[0])}")
 
     @property
     def mantissa(self):
@@ -182,6 +187,15 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
     def log(self, base:Decimal): #Custom log operation
         mant,exp = self.value
         return expol(Decimal(log(mant, base))+Decimal(exp)/Decimal(log(base, 10)))
+
+    def tet(self, tetraponent): #Rough tetration operation
+        tetraponent = expol(tetraponent)
+        out = expol(self)
+        while tetraponent > 1:
+            if out.exponent > 1000000: raise MemoryOverflowSafeguard(out.exponent)
+            out = self**out
+            tetraponent -= 1
+        return out
 
     def __neg__(self): #Negate operation -expol
         return expol([self.value[MANTISSA]*-1,self.value[EXPONENT]])
@@ -502,7 +516,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         return int(out)
 
     def __float__(self): #Conversion to double floating point
-        if abs(self.value[EXPONENT]) > 308: raise OverflowError("expol too large to convert to float") #will float overflow if too large, and could cause memory overflow.
+        if abs(self.value[EXPONENT]) > 308: raise OverflowError("Expol too large to convert to float") #will float overflow if too large, and could cause memory overflow.
         else: return float(self.value[MANTISSA]*10**self.value[EXPONENT])
 
     def __iter__(self): #Conversion to list
