@@ -5,6 +5,8 @@ from decimal import Decimal
 
 MANTISSA = 0
 EXPONENT = 1
+REAL = 0
+IMAGINARY = 1
 EMAX = 1000000
 
 class MemoryOverflowSafeguard(Exception):
@@ -47,6 +49,8 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
 ,   - Insert thousands separators
 %   - Append percent sign"""
         self.value = [0,0]
+        self.isInfinite = False
+        self.isNaN = False
         if obj != None:
             if type(obj) == str:
                 #Case 1: Stringified exponent
@@ -86,7 +90,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             elif type(obj) in [float, int, Decimal]: self.value = self.expExtract(obj)
             #Case 10: Expol
             elif type(obj) == expol: self.value = obj.value
-            else: raise TypeError(f"Expected int, float, list, or str, but got {type(obj[0])}")
+            else: raise TypeError(f"Expected int, float, list, expol, Decimal, or str, but got {type(obj[0])}")
 
     @property
     def mantissa(self):
@@ -100,7 +104,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         if type(variable) in [int, float, Decimal]:
             if variable != 0:
                 exponent = int(log(abs(variable),10))
-                mantissa = Decimal(variable) / 10**exponent
+                mantissa = Decimal(variable) / Decimal(10**exponent)
                 return self.expFixVar([mantissa, exponent])
             else: return [0,0]
         elif type(variable) == expol:
@@ -113,26 +117,37 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         if type(variable[MANTISSA]) is float:
             variable = [Decimal(variable[MANTISSA]), variable[EXPONENT]]
         if variable[MANTISSA] != 0:
-            while abs(variable[MANTISSA]) >= 10:
+            while abs(variable[MANTISSA]) >= 10: #Rough adjustment
                 variable[MANTISSA] /= 10
                 variable[EXPONENT] += 1
             while abs(variable[0]) < 1:
                 variable[MANTISSA] *= 10
                 variable[EXPONENT] -= 1
+            if abs(variable[MANTISSA]) >= 9.9999999999: #Fine adjustment
+                variable[MANTISSA] = Decimal(round(variable[MANTISSA]))
+                variable[MANTISSA] /= 10
+                variable[EXPONENT] += 1
         else:
             variable[EXPONENT] = 0
+        self.format_float(variable[MANTISSA])
         return variable
 
     def getSign(self, var): # Splits the sign from the number.
-        if var < 0: return var*-1, -1
-        else: return var, 1
+        if not var.isNaN:
+            if var < 0: return var*-1, -1
+            else: return var, 1
+
+    def format_float(self, f):
+        d = Decimal(str(f));
+        return d.quantize(Decimal(1)) if d == d.to_integral() else d.normalize()
 
     def __add__(self, addend): #Addition operation +
+        if self.isNaN or self.isInfinite: return self
         var1 = self.value; var2 = self.expExtract(addend)
         expDiff = var1[EXPONENT] - var2[EXPONENT]
         if abs(expDiff) <= 50:
-            if expDiff < 0: mantOut = var1[MANTISSA]*10**expDiff+var2[MANTISSA]
-            elif expDiff >= 0: mantOut = var1[MANTISSA]+var2[MANTISSA]/10**expDiff
+            if expDiff < 0: mantOut = var1[MANTISSA]*10**Decimal(expDiff)+var2[MANTISSA]
+            elif expDiff >= 0: mantOut = var1[MANTISSA]+var2[MANTISSA]/10**Decimal(expDiff)
             expOut = max(var1[EXPONENT], var2[EXPONENT])
         #the following is to prevent float overflow due to attempting to add two numbers of incomparable size
         elif expDiff > 50: mantOut = var1[MANTISSA]; expOut = var1[EXPONENT]
@@ -151,13 +166,20 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
 
     def __truediv__(self, divisor): #Division operation /
         var1 = self.value; var2 = self.expExtract(divisor)
-        return self.__mul__([1/var2[MANTISSA], -var2[EXPONENT]])
+        return self.__mul__([Decimal(1)/Decimal(var2[MANTISSA]), -var2[EXPONENT]])
 
     def __floordiv__(self, divisor): #Floor division operation //
         quotient = self.__truediv__(self.expExtract(divisor))
         if abs(quotient.value[EXPONENT]) < 100: #if the number is too large, the ones place might not be saved anyway
-            quotient.value[MANTISSA] = floor(quotient.value[MANTISSA]*10**quotient.value[EXPONENT])/10**quotient.value[EXPONENT]
+            quotient.value[MANTISSA] = Decimal(floor(quotient.value[MANTISSA]*Decimal(10**quotient.value[EXPONENT])))/Decimal(10**quotient.value[EXPONENT])
         return expol(self.expFixVar(quotient.value))
+
+    def ceildiv(self, divisor): #Ceiling division operation
+        return -(-self // self.expExtract(divisor))
+
+    def round(self): #Rounding operation
+        if self%1 < 0.5: return self//1
+        else: return self.ceildiv(1)
 
     def __mod__(self, divisor): #Modulo division operation %
         quotient = self.__truediv__(self.expExtract(divisor))
@@ -165,10 +187,10 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         return quotient - floor
 
     def __pow__(self, exponent): #Exponentiation operation **
-        var1 = self.value; var2 = expol(exponent).value
+        var1 = self.value; var2 = self.expExtract(exponent)
         a, b, c, d = var1[0], var1[1], var2[0], var2[1]
         if d > EMAX: raise MemoryOverflowSafeguard(d)
-        n = int(((b+Decimal(log(a, 10)))*10**d*c)*10**30)
+        n = int(((b+Decimal(log(a, 10)))*Decimal(10**d)*c)*10**30)
         if n >= 0: expOut = abs(n) // 10**30
         else: expOut = abs(n) // 10**30 * -1
         mantOut = round(10**(n % 10**30 / 10**30),10)
@@ -252,7 +274,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         else: return False
 
     def __str__(self):#Conversion to string
-        return f"{self.value[MANTISSA]}e{self.value[EXPONENT]}"
+        return f"{self:e}"
 
     def __format__(self, fmt): #String format codes
         mant = self.value[MANTISSA]; exp = self.value[EXPONENT]
@@ -361,7 +383,7 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             if len(name) > 80:
                 name = "..." + name[-80:]
             if (workingTier <= 1 and exponentAtWorkingTier < 10) or (workingTier == 0):
-                return f"{round(mant,MANTISSA_ROUND)} " + name
+                return f"{self.format_float(round(mant,MANTISSA_ROUND))} " + name
             else:
                 return name
 
@@ -417,11 +439,11 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             while exp > 10:
                 exp = round(log(exp, 10),MANTISSA_ROUND)
                 loops += 1
-            string = f"{round(mant,MANTISSA_ROUND)}" + "e" * loops + f"{exp}"
+            string = f"{self.format_float(round(mant,MANTISSA_ROUND))}" + "E" * loops + f"{exp}"
         
         elif "e" in fmt or fmt == "": #engineering
-            if "," in fmt: string = f"{round(mant,MANTISSA_ROUND)}e{exp:,}"
-            else: string = f"{round(mant,MANTISSA_ROUND)}e{exp}"
+            if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}E{exp:,}"
+            else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}E{exp}"
         
         elif "skl" in fmt: #scientific k log looped
             if "," in fmt: k = "1,000"
@@ -432,13 +454,13 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             while exp > 1000:
                 exp = round(log(exp, 1000),MANTISSA_ROUND)
                 loops += 1
-            string = f"{round(mant,MANTISSA_ROUND)}×" + k * loops + f"{exp}"
+            string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×" + k * loops + f"{exp}"
         
         elif "sk" in fmt: #scientific k
             mant *= 10**(exp % 3)
             exp //= 3
-            if "," in fmt: string = f"{round(mant,MANTISSA_ROUND)}×1,000^{exp:,}"
-            else: string = f"{round(mant,MANTISSA_ROUND)}×1000^{exp}"
+            if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×1,000^{exp:,}"
+            else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×1000^{exp}"
 
         elif "is" in fmt: #illions shorthand
             string = convToListNotation(mant, exp, illionsShortList)
@@ -451,11 +473,11 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             while exp > 10:
                 exp = round(log(exp, 10),MANTISSA_ROUND)
                 loops += 1
-            string = f"{round(mant,MANTISSA_ROUND)}×" + "10^" * loops + f"{exp}"
+            string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×" + "10^" * loops + f"{exp}"
         
         elif "s" in fmt: #scientific
-            if "," in fmt: string = f"{round(mant,MANTISSA_ROUND)}×10^{exp:,}"
-            else: string = f"{round(mant,MANTISSA_ROUND)}×10^{exp}"
+            if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×10^{exp:,}"
+            else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×10^{exp}"
         
         elif "kl" in fmt: #engineering k log looped
             mant *= 10**(exp % 3)
@@ -464,13 +486,13 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             while exp > 1000:
                 exp = round(log(exp, 1000),MANTISSA_ROUND)
                 loops += 1
-            string = f"{round(mant,MANTISSA_ROUND)}" + "k" * loops + f"{exp}"
+            string = f"{self.format_float(round(mant,MANTISSA_ROUND))}" + "K" * loops + f"{exp}"
 
         elif "k" in fmt: #engineering k
             mant *= 10**(exp % 3)
             exp //= 3
-            if "," in fmt: string = f"{round(mant,MANTISSA_ROUND)}k{exp:,}"
-            else: string = f"{round(mant,MANTISSA_ROUND)}k{exp}"
+            if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}K{exp:,}"
+            else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}K{exp}"
 
         elif "r" in fmt: #roman
             notationstr = "IVXLCDM-"
@@ -523,4 +545,109 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
 
     def __iter__(self): #Conversion to list
         return iter(self.value)
-    
+
+class expolComplex:
+    def __init__(self, real=None, imag=None):
+        self.value = [expol(0),expol(0)]
+        self.validReal = [float, int, Decimal, expol]
+        self.validComplex = [expolComplex, complex]
+        if type(real) in self.validComplex:
+            self.value[REAL] = real.real
+            self.value[IMAGINARY] = real.imag
+        else:
+            if real != None:
+                #Cases 1, 2 and 3: Float, int, or decimal
+                if type(real) in [float, int, Decimal]: self.value[REAL] = expol(real)
+                #Case 4: Expol
+                elif type(real) == expol: self.value[REAL] = real.value
+                else: raise TypeError(f"Expected int, float, list, Decimal, or expol, but got {type(obj[0])}")
+            if imag != None:
+                #Cases 1, 2 and 3: Float, int, or decimal
+                if type(imag) in [float, int, Decimal]: self.value[IMAGINARY] = expol(imag)
+                #Case 4: Expol
+                elif type(imag) == expol: self.value[IMAGINARY] = imag.value
+                else: raise TypeError(f"Expected int, float, list, Decimal, or expol, but got {type(obj[0])}")
+            
+    @property
+    def real(self):
+        return self.value[REAL]
+
+    @property
+    def imag(self):
+        return self.value[IMAGINARY]
+
+    def __add__(self, addend): #Addition operation +
+        if type(addend) in self.validReal:
+            self.value[REAL] += addend
+        elif type(addend) in self.validComplex:
+            self.value[REAL] += addend.real
+            self.value[IMAGINARY] += addend.imag
+        return self
+
+    def __sub__(self, subtrahend): #Subtraction operation -
+        if type(subtrahend) in self.validReal:
+            self.value[REAL] -= subtrahend
+        elif type(subtrahend) in self.validComplex:
+            self.value[REAL] -= subtrahend.real
+            self.value[IMAGINARY] -= subtrahend.imag
+        return self
+
+    def __mul__(self, factor): #Multiplication operation *
+        if type(factor) in self.validReal:
+            self.value[REAL] *= factor
+            self.value[IMAGINARY] *= factor
+        elif type(factor) in self.validComplex:
+            r = self.real * factor.real - self.imag * factor.imag
+            i = self.real * factor.imag + self.imag * factor.real
+            self.value[REAL] = r
+            self.value[IMAGINARY] = i
+        return self
+
+    def __truediv__(self, divisor): #Division operation /
+        if type(divisor) in self.validReal:
+            self.value[REAL] /= divisor
+            self.value[IMAGINARY] /= divisor
+        elif type(divisor) in self.validComplex:
+            numerator = self * expolComplex(divisor.real, -divisor.imag)
+            denominator = expolComplex(divisor) * expolComplex(divisor.real, -divisor.imag)
+            self = numerator
+            self.value[REAL] /= denominator.real
+            self.value[IMAGINARY] /= denominator.real
+        return self
+
+    def __floordiv__(self, divisor): #Floor division operation //
+        self /= divisor
+        self.value[REAL] //= 1
+        self.value[IMAGINARY] //= 1
+        return self
+
+    def ceildiv(self, divisor): #Ceiling division operation
+        self /= divisor
+        self.value[REAL] = self.real.ceildiv(1)
+        self.value[IMAGINARY] = self.imag.ceildiv(1)
+        return self
+        
+    def round(self): #Rounding operation
+        self.value[REAL] = self.real.round()
+        self.value[IMAGINARY] = self.imag.round()
+        return self
+
+    def __mod__(self, divisor): #Modulo division operation %
+        if type(addend) in self.validReal:
+            self.value[REAL]
+
+    def __pow__(self, exponent): #Exponentiation operation **
+        if type(addend) in self.validReal:
+            self.value[REAL]
+
+    def log10(self): #Log10 operation
+        if type(addend) in self.validReal:
+            self.value[REAL]
+
+    def log(self, base:Decimal): #Custom log operation
+        if type(addend) in self.validReal:
+            self.value[REAL]
+
+    def tet(self, tetraponent): #Rough tetration operation
+        if type(addend) in self.validReal:
+            self.value[REAL]
