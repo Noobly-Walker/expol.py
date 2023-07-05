@@ -189,8 +189,10 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
     def __pow__(self, exponent): #Exponentiation operation **
         var1 = self.value; var2 = self.expExtract(exponent)
         a, b, c, d = var1[0], var1[1], var2[0], var2[1]
-        if d > EMAX: raise MemoryOverflowSafeguard(d)
-        n = int(((b+Decimal(log(a, 10)))*Decimal(10**d)*c)*10**30)
+        #if d > EMAX: raise MemoryOverflowSafeguard(d)
+        if d > EMAX: j = expol(10)**expol(d)
+        else: j = 10**d
+        n = int((j*c*(b+Decimal(log(a, 10))))*10**30)
         if n >= 0: expOut = abs(n) // 10**30
         else: expOut = abs(n) // 10**30 * -1
         mantOut = round(10**(n % 10**30 / 10**30),10)
@@ -435,64 +437,94 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
                 MANTISSA_ROUND = 0
         
         if "el" in fmt: #engineering log looped
-            loops = 1
-            while exp > 10:
-                exp = round(log(exp, 10),MANTISSA_ROUND)
-                loops += 1
-            string = f"{self.format_float(round(mant,MANTISSA_ROUND))}" + "E" * loops + f"{exp}"
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                loops = 1
+                while exp > 10:
+                    exp = round(log(exp, 10),MANTISSA_ROUND)
+                    loops += 1
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND))}" + "E" * loops + f"{exp}"
         
         elif "e" in fmt or fmt == "": #engineering
-            if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}E{exp:,}"
-            else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}E{exp}"
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}E{exp:,}"
+                else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}E{exp}"
         
         elif "skl" in fmt: #scientific k log looped
-            if "," in fmt: k = "1,000"
-            else: k = "1000"
-            mant *= 10**(exp % 3)
-            exp //= 3
-            loops = 1
-            while exp > 1000:
-                exp = round(log(exp, 1000),MANTISSA_ROUND)
-                loops += 1
-            string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×" + k * loops + f"{exp}"
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                if "," in fmt: k = "1,000"
+                else: k = "1000"
+                mant *= 10**(exp % 3)
+                exp //= 3
+                loops = 1
+                while exp > 1000:
+                    exp = round(log(exp, 1000),MANTISSA_ROUND)
+                    loops += 1
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×" + k * loops + f"{exp}"
         
         elif "sk" in fmt: #scientific k
-            mant *= 10**(exp % 3)
-            exp //= 3
-            if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×1,000^{exp:,}"
-            else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×1000^{exp}"
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                mant *= 10**(exp % 3)
+                exp //= 3
+                if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×1,000^{exp:,}"
+                else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×1000^{exp}"
 
         elif "is" in fmt: #illions shorthand
-            string = convToListNotation(mant, exp, illionsShortList)
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                string = convToListNotation(mant, exp, illionsShortList)
 
         elif "i" in fmt: #illions
-            string = convToListNotation(mant, exp, illionsList)
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                string = convToListNotation(mant, exp, illionsList)
             
         elif "sl" in fmt: #scientific log looped
-            loops = 1
-            while exp > 10:
-                exp = round(log(exp, 10),MANTISSA_ROUND)
-                loops += 1
-            string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×" + "10^" * loops + f"{exp}"
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                loops = 1
+                while exp > 10:
+                    exp = round(log(exp, 10),MANTISSA_ROUND)
+                    loops += 1
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×" + "10^" * loops + f"{exp}"
         
         elif "s" in fmt: #scientific
-            if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×10^{exp:,}"
-            else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×10^{exp}"
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×10^{exp:,}"
+                else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}×10^{exp}"
         
         elif "kl" in fmt: #engineering k log looped
-            mant *= 10**(exp % 3)
-            exp //= 3
-            loops = 1
-            while exp > 1000:
-                exp = round(log(exp, 1000),MANTISSA_ROUND)
-                loops += 1
-            string = f"{self.format_float(round(mant,MANTISSA_ROUND))}" + "K" * loops + f"{exp}"
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                mant *= 10**(exp % 3)
+                exp //= 3
+                loops = 1
+                while exp > 1000:
+                    exp = round(log(exp, 1000),MANTISSA_ROUND)
+                    loops += 1
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND))}" + "K" * loops + f"{exp}"
 
         elif "k" in fmt: #engineering k
-            mant *= 10**(exp % 3)
-            exp //= 3
-            if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}K{exp:,}"
-            else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}K{exp}"
+            if abs(exp) < 2*MANTISSA_ROUND:
+                string = f"{self.format_float(round(mant,MANTISSA_ROUND)*10**exp):,}"
+            else:
+                mant *= 10**(exp % 3)
+                exp //= 3
+                if "," in fmt: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}K{exp:,}"
+                else: string = f"{self.format_float(round(mant,MANTISSA_ROUND))}K{exp}"
 
         elif "r" in fmt: #roman
             notationstr = "IVXLCDM-"
