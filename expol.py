@@ -51,6 +51,11 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         self.value = [0,0]
         self.isInfinite = False
         self.isNaN = False
+
+        #a lot of these gets cut off, unfortunately
+        self.pi = self.expExtract(3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679)
+        self.e = self.expExtract(2.7182818284590452353602874713526624977572470936999595749669676277240766303535475945713821785251664274)
+        
         if obj != None:
             if type(obj) == str:
                 #Case 1: Stringified exponent
@@ -216,9 +221,9 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
 
     def log(self, base:Decimal): #Custom log operation
         mant,exp = self.value
-        return expol(Decimal(log(mant, base))+Decimal(exp)/Decimal(log(base, 10)))
+        return expol(Decimal(log(mant, base)))+expol(exp)/Decimal(log(base, 10))
 
-    def tet(self, tetraponent): #Rough tetration operation
+    def tet(self, tetraponent): #Rough bruteforce tetration operation
         tetraponent = expol(tetraponent)
         out = expol(self)
         while tetraponent > 1:
@@ -227,14 +232,19 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
             tetraponent -= 1
         return out
 
-    #a lot of this gets cut off, unfortunately
-    pi = expol(3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679)
+    def tetlog(self, base): #Rough bruteforce tetralog operation
+        val = self
+        result = expol(0)
+        while val > base:
+            val = val.log(base)
+            result += 1
+        return result
 
     def sin(self): #Sine function
-        return expol(sin(float(self%(pi*2))))
+        return expol(sin(float(self%(self.pi*2))))
 
     def cos(self): #Cosine function
-        return expol(cos(float(self%(pi*2))))
+        return expol(cos(float(self%(self.pi*2))))
 
     def tan(self): #Tangent function. To do it justice, however, we need millions of digits of pi.
         return self.sin()/self.cos()
@@ -249,10 +259,10 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         return expol(1)/self.sin()
 
     def rad(self): #Degrees to radians
-        return self * pi/180
+        return self * self.pi/180
 
     def deg(self): #Radians to degrees
-        return self * expol(180)/pi
+        return self * expol(180)/self.pi
 
     def fact(self): #Factorial
         if self < 1000: #Bruteforce is more precise
@@ -263,8 +273,8 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
                 reps -= 1
             return newVal
         else: #Stirling's approximation is faster
-            sqrt_2pi_n = expol.root(expol(3.141592653589793) * 2 * self, expol(2))
-            power_term = (self / expol(2.718281828459045)) ** self
+            sqrt_2pi_n = expol.root(expol(self.pi) * 2 * self, expol(2))
+            power_term = (self / expol(self.e)) ** self
             correction_terms = expol(1)
             for i in range(1, 5):
                 correction_terms += expol((-1) ** i) * (expol(2 * i - 1) / (self * 2 * 12)) * (expol(1) / self) ** i
