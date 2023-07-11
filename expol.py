@@ -1,5 +1,5 @@
 from math import log, ceil, floor, sin, cos
-from decimal import Decimal
+from decimal import Decimal, Context, setcontext, ROUND_HALF_UP
 # Written and maintained by Noobly Walker.
 # Liscensed with GNU General Public Liscense v3.
 
@@ -8,6 +8,9 @@ EXPONENT = 1
 REAL = 0
 IMAGINARY = 1
 EMAX = 1000000
+
+custom_context = Context(prec=15, rounding=ROUND_HALF_UP)
+setcontext(custom_context)
 
 class MemoryOverflowSafeguard(Exception):
     def __init__(self, length, message="this operation would require a dangerous amount of memory. This action has been cancelled."):
@@ -51,10 +54,6 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
         self.value = [0,0]
         self.isInfinite = False
         self.isNaN = False
-
-        #a lot of these gets cut off, unfortunately
-        self.pi = self.expExtract(3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679)
-        self.e = self.expExtract(2.7182818284590452353602874713526624977572470936999595749669676277240766303535475945713821785251664274)
         
         if obj != None:
             if type(obj) == str:
@@ -104,6 +103,22 @@ r   - Roman Numerals            CXXIIIˣᵛ⚂^ᶦ
     @property
     def exponent(self):
         return self.value[EXPONENT]
+
+    @property
+    def pi(self):
+        return expol(3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679)
+
+    @property
+    def tau(self):
+        return self.pi * 2
+
+    @property
+    def phi(self):
+        return expol(1.6180339887498948482045868343656381177203091798057628621354486227052604628189024497072072041893911374)
+
+    @property
+    def e(self):
+        return expol(2.7182818284590452353602874713526624977572470936999595749669676277240766303535475945713821785251664274)
             
     def expExtract(self, variable): #Converts integers, double floating point numbers, and decimal floating point numbers into exponent lists
         if type(variable) in [int, float, Decimal]:
